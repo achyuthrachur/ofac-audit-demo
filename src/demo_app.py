@@ -179,17 +179,20 @@ def show_inspection_page() -> None:
             "Policy status",
             options=sorted(policy_df["status"].unique()),
             default=sorted(policy_df["status"].unique()),
+            key="policy_status_filter",
         )
         compliance_filter = st.multiselect(
             "Compliance status",
             options=["compliant", "non-compliant"],
             default=["compliant", "non-compliant"],
+            key="policy_compliance_filter",
         )
         available_failures = sorted([c for c in policy_df["failure_category"].dropna().unique()])
         failure_filter = st.multiselect(
             "Failure category",
             options=available_failures,
             default=available_failures,
+            key="policy_failure_filter",
         )
         include_compliant = st.checkbox("Include compliant policies", value=True)
 
@@ -214,11 +217,13 @@ def show_inspection_page() -> None:
             "Disposition",
             options=sorted(alerts_df["disposition"].unique()),
             default=sorted(alerts_df["disposition"].unique()),
+            key="alert_disposition_filter",
         )
         reviewer_filter = st.multiselect(
             "Reviewer",
             options=sorted(alerts_df["reviewer_id"].unique()),
             default=sorted(alerts_df["reviewer_id"].unique()),
+            key="alert_reviewer_filter",
         )
         filtered_alerts = alerts_df[
             alerts_df["disposition"].isin(disposition_filter)
@@ -233,6 +238,7 @@ def show_inspection_page() -> None:
             "Report type",
             options=sorted(report_df["report_type"].unique()),
             default=sorted(report_df["report_type"].unique()),
+            key="report_type_filter",
         )
         filtered_reports = report_df[report_df["report_type"].isin(report_type_filter)]
         st.dataframe(filtered_reports)
@@ -244,14 +250,16 @@ def show_inspection_page() -> None:
             "Failure category",
             options=available_failures,
             default=available_failures,
+            key="validation_failure_filter",
         )
-        status_filter = st.multiselect(
+        validation_status_filter = st.multiselect(
             "Compliance status",
             options=sorted(compliance_df["compliance_status"].unique()),
             default=sorted(compliance_df["compliance_status"].unique()),
+            key="validation_status_filter",
         )
         filtered_validation = compliance_df[
-            compliance_df["compliance_status"].isin(status_filter)
+            compliance_df["compliance_status"].isin(validation_status_filter)
         ]
         if fail_filter:
             filtered_validation = filtered_validation[
@@ -310,7 +318,7 @@ def show_summary_page() -> None:
             .mark_arc()
             .encode(theta="count", color="failure_category", tooltip=["failure_category", "count"])
         )
-        st.altair_chart(pie_chart, use_container_width=True)
+        st.altair_chart(pie_chart, width="stretch")
     else:
         st.info("All policies are compliant in the current dataset.")
 
@@ -325,6 +333,7 @@ def show_summary_page() -> None:
             {"Metric": "Compliance ratio", "Value": f"{summary.get('compliance_ratio', 0.0):.1%}"},
         ]
     )
+    metrics_df["Value"] = metrics_df["Value"].astype(str)
     st.table(metrics_df)
 
 
