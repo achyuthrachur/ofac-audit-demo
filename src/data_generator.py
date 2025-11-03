@@ -434,6 +434,141 @@ class OFACDatasetGenerator:
         if count <= 0:
             return alerts
 
+        last_screen_date = (
+            dt.date.fromisoformat(policy["last_screen_date"])
+            if policy.get("last_screen_date")
+            else dt.date.fromisoformat(policy["inforce_date"])
+        )
+
+        sla_failure_applied = False
+        note_failure_applied = False
+        ofac_failure_applied = False
+
+        for index in range(count):
+            alert_id = f"ALT-{self.alert_counter:06d}"
+            self.alert_counter += 1
+
+            reason = self._weighted_choice(ALERT_REASONS)
+            base_offset = 1 + (2 * index if multi_policy else 0)
+            created_date = self._add_business_days(
+                last_screen_date, self.random.randint(base_offset, base_offset + 8)
+            )
+            similarity = round(self.random.uniform(0.75, 0.98), 2)
+            reviewer_id = self.random.choice(REVIEWER_POOL)
+
+            disposition_forced: Optional[str] = None
+            alert_ofac_failure = False
+            if enforce_ofac_failure and not ofac_failure_applied:
+                disposition_forced = "confirmed"
+                alert_ofac_failure = True
+                ofac_failure_applied = True
+
+            disposition = self._pull_disposition(disposition_pool, disposition_forced)
+
+            if disposition in {"escalated", "confirmed"} or enforce_note_failure:
+                reviewed_flag = "Y"
+            else:
+                reviewed_flag = "Y" if self.random.random() < 0.95 else "N"
+
+            reviewed_date: Optional[dt.date] = None
+            sla_failure = False
+            if reviewed_flag == "Y":
+                if enforce_sla_failure and not sla_failure_applied:
+                    review_delay = alert_sla + self.random.randint(1, 4)
+                    sla_failure_applied = True
+                    sla_failure = True
+                else:
+                    review_delay = self.random.randint(0, max(alert_sla, 1))
+                    if review_delay > alert_sla:
+                        sla_failure = True
+                reviewed_date = self._add_business_days(created_date, review_delay)
+            else:
+                sla_failure = True
+
+            ticket_ref = self._generate_ticket_reference(created_date.year)
+
+            notes_missing: List[str] = []
+            if enforce_note_failure and not note_failure_applied:
+                missing_count = self.random.randint(1, min(3, len(REQUIRED_NOTE_ELEMENTS)))
+                notes_missing = self.random.sample(REQUIRED_NOTE_ELEMENTS, missing_count)
+                note_failure_applied = True
+
+            note_failure = bool(notes_missing) or reviewed_flag != "Y"
+            reviewer_notes = self._compose_reviewer_notes(
+                policy,
+                reason,
+                similarity,
+                ticket_ref,
+                disposition,
+                reviewed_date,
+                notes_missing,
+                pending_review=reviewed_flag != "Y",
+            )
+
+            escalation_date: Optional[dt.date] = None
+            senior_reviewer_id = ""
+            if disposition in {"escalated", "confirmed"} and reviewed_date:
+                escalation_lag = self.random.randint(0, 3)
+                escalation_date = self._add_business_days(reviewed_date, escalation_lag)
+                senior_reviewer_id = self.random.choice(SENIOR_POOL)
+
+            alert_record = {
+                "alert_id": alert_id,
+                "policy_id": policy["policy_id"],
+                "alert_created_date": created_date.isoformat(),
+                "alert_reason": reason,
+                "similarity_score": similarity,
+                "reviewed_flag": reviewed_flag,
+                "reviewed_date": reviewed_date.isoformat() if reviewed_date else "",
+                "reviewer_id": reviewer_id,
+                "reviewer_notes": reviewer_notes,
+                "disposition": disposition,
+                "escalation_date": escalation_date.isoformat() if escalation_date else "",
+                "senior_reviewer_id": senior_reviewer_id,
+                "supporting_docs": ticket_ref,
+                "sla_failure": sla_failure,
+                "note_failure": note_failure,
+                "ofac_failure": alert_ofac_failure,
+            }
+
+            alerts.append(alert_record)
+
+        # Safeguard: ensure OFAC failure policies have a confirmed alert.
+        if enforce_ofac_failure and not any(alert["ofac_failure"] for alert in alerts):
+            # Promote the first alert to a confirmed OFAC failure path.
+            primary_alert = alerts[0]
+            primary_alert["disposition"] = "confirmed"
+            primary_alert["reviewed_flag"] = "Y"
+            if not primary_alert.get("reviewed_date"):
+                reviewed_date = self._add_business_days(
+                    dt.date.fromisoformat(primary_alert["alert_created_date"]),
+                    self.random.randint(1, alert_sla + 2),
+                )
+                primary_alert["reviewed_date"] = reviewed_date.isoformat()
+            if not primary_alert.get("escalation_date"):
+                escalation_date = self._add_business_days(
+                    dt.date.fromisoformat(primary_alert["reviewed_date"] or primary_alert["alert_created_date"]),
+                    self.random.randint(0, 2),
+                )
+                primary_alert["escalation_date"] = escalation_date.isoformat()
+            primary_alert["senior_reviewer_id"] = self.random.choice(SENIOR_POOL)
+            primary_alert["ofac_failure"] = True
+            primary_alert["sla_failure"] = False
+            primary_alert["note_failure"] = False
+            reviewed_date = dt.date.fromisoformat(primary_alert["reviewed_date"])
+            primary_alert["reviewer_notes"] = self._compose_reviewer_notes(
+                policy,
+                primary_alert["alert_reason"],
+                float(primary_alert["similarity_score"]),
+                primary_alert["supporting_docs"],
+                primary_alert["disposition"],
+                reviewed_date,
+                missing_elements=[],
+                pending_review=False,
+            )
+
+        return alerts
+
     def _build_reporting_rows_for_alerts(
         self,
         alerts: List[Dict[str, Any]],
