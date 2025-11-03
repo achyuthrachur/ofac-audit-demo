@@ -1,0 +1,20 @@
+population:
+  total_policies: 500
+  compliance_ratio: 0.60  # 60% compliant, 40% non-compliant
+
+failure_distribution:
+  # Among non-compliant policies, distribute failures across these categories
+  screening_timeliness: 0.35      # 35% miss screening cadence
+  alert_review_timeliness: 0.25   # 25% exceed 2-day review SLA
+  documentation_quality: 0.30     # 30% have incomplete notes
+  ofac_reporting_delay: 0.10      # 10% late OFAC reports
+
+alert_rates:
+  alert_generation: 0.12          # 12% of policies generate alerts
+  escalation_rate: 0.15           # 15% of alerts escalate
+  confirmed_match_rate: 0.05      # 5% of escalations are confirmed hits
+
+business_rules:
+  screening_cadence_days: 30
+  alert_review_sla_days: 2
+  ofac_reporting_sla_days: 10
