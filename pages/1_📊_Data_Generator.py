@@ -193,7 +193,6 @@ def show_generation_page() -> None:
             with col_go:
                 if st.button("🔍 Go to Analysis", type="primary", use_container_width=True):
                     st.session_state["nav_selection"] = "🔍 Audit Analysis"
-                    st.experimental_rerun()
             with col_hint:
                 st.info("Or download the files above and proceed to the Analysis page manually.")
 
