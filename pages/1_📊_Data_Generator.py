@@ -168,7 +168,7 @@ def show_generation_page() -> None:
                 data=prepare_download(df),
                 file_name=name,
                 mime="text/csv",
-                use_container_width=True,
+                key=f"download_{name}",
             )
 
         st.markdown("**Preview (first 10 rows)**")
@@ -191,7 +191,7 @@ def show_generation_page() -> None:
             st.success("✅ Data generation complete! Files are ready for analysis.")
             col_go, col_hint = st.columns([1, 3])
             with col_go:
-                if st.button("🔍 Go to Analysis", type="primary", use_container_width=True):
+                if st.button("🔍 Go to Analysis", type="primary"):
                     st.session_state["nav_selection"] = "🔍 Audit Analysis"
             with col_hint:
                 st.info("Or download the files above and proceed to the Analysis page manually.")

@@ -41,19 +41,23 @@ def create_failure_distribution_bar(data: Dict[str, pd.DataFrame]) -> go.Figure:
     compliance_validation = data.get("compliance_validation", pd.DataFrame())
     failures = compliance_validation[compliance_validation["compliance_status"] == "non-compliant"]
     failure_counts = (
-        failures["failure_category"].value_counts().reset_index().rename(columns={"index": "category", "failure_category": "count"})
+        failures["failure_category"]
+        .value_counts()
+        .reset_index()
+        .rename(columns={"index": "category", "failure_category": "failure_count"})
         if not failures.empty
-        else pd.DataFrame({"category": [], "count": []})
+        else pd.DataFrame({"category": [], "failure_count": []})
     )
+    failure_counts = failure_counts.loc[:, ["category", "failure_count"]]
 
     fig = px.bar(
         failure_counts,
         y="category",
-        x="count",
+        x="failure_count",
         orientation="h",
         title="Failure Distribution (Among Non-Compliant)",
-        labels={"category": "Failure Category", "count": "Count"},
-        color="count",
+        labels={"category": "Failure Category", "failure_count": "Count"},
+        color="failure_count",
         color_continuous_scale="Reds",
     )
     fig.update_layout(height=350, showlegend=False)

@@ -156,14 +156,14 @@ def render() -> None:
         col_left, col_right = st.columns(2)
         with col_left:
             st.subheader("Compliance Status")
-            st.plotly_chart(create_compliance_donut(data), use_container_width=True)
+            st.plotly_chart(create_compliance_donut(data), width="stretch")
         with col_right:
             st.subheader("Failure Distribution")
-            st.plotly_chart(create_failure_distribution_bar(data), use_container_width=True)
+            st.plotly_chart(create_failure_distribution_bar(data), width="stretch")
 
         st.markdown("---")
         st.subheader("Alert Timeline & Dispositions")
-        st.plotly_chart(create_alert_timeline(data), use_container_width=True)
+        st.plotly_chart(create_alert_timeline(data), width="stretch")
 
     with tab_detailed:
         st.header("Detailed Compliance Testing")
@@ -210,10 +210,10 @@ def render() -> None:
                 st.metric("Avg Review Time", f"{alert_results['avg_review_days']:.1f} days")
 
             st.markdown("#### Reviewer Performance Scorecard")
-            st.plotly_chart(create_reviewer_scorecard(reviewer_perf), use_container_width=True)
+            st.plotly_chart(create_reviewer_scorecard(reviewer_perf), width="stretch")
 
             st.markdown("#### Alert Review Exceptions")
-            st.dataframe(alert_results["exceptions"], use_container_width=True, hide_index=True)
+        st.dataframe(alert_results["exceptions"], hide_index=True, use_container_width=True)
 
         with test_reporting:
             st.subheader("Check 3: OFAC Reporting Compliance")
@@ -226,7 +226,7 @@ def render() -> None:
                 st.metric("Late Reports", ofac_results["late"], delta_color="inverse")
 
             st.markdown("#### OFAC Reporting Exceptions")
-            st.dataframe(ofac_results["exceptions"], use_container_width=True, hide_index=True)
+        st.dataframe(ofac_results["exceptions"], hide_index=True, use_container_width=True)
 
     with tab_llm:
         st.header("🤖 AI-Powered Note Quality Evaluator")
@@ -337,10 +337,10 @@ def render() -> None:
                 "Trend": ["↑", "↑", "↑", "↓"],
             }
         )
-        st.dataframe(yoy_data, use_container_width=True, hide_index=True)
+        st.dataframe(yoy_data, hide_index=True, use_container_width=True)
 
         st.markdown("#### Risk Heatmap: Control Coverage by Dimension")
-        st.plotly_chart(create_risk_heatmap(data), use_container_width=True)
+        st.plotly_chart(create_risk_heatmap(data), width="stretch")
 
     with tab_export:
         st.header("📄 Generate Audit Workpapers")
