@@ -5,6 +5,8 @@ Upload datasets and perform comprehensive compliance testing.
 
 from __future__ import annotations
 
+import io
+import zipfile
 import sys
 from pathlib import Path
 from typing import Dict, List
@@ -372,14 +374,13 @@ def render() -> None:
 
         col_left, col_right = st.columns(2)
         with col_left:
-            _ = st.text_input("Workpaper Title", "OFAC Sanctions Compliance Audit")
-            _ = st.text_input("Lead Auditor", "")
+            workpaper_title = st.text_input("Workpaper Title", "OFAC Sanctions Compliance Audit")
+            lead_auditor = st.text_input("Lead Auditor", "")
         with col_right:
-            _ = st.date_input("Period Start")
-            _ = st.date_input("Period End")
+            period_start = st.date_input("Period Start")
+            period_end = st.date_input("Period End")
 
         if st.button("📥 Generate Workpaper Package", type="primary"):
-            st.success("✅ Workpaper package generated!")
             combined_exceptions = _safe_concat(
                 [
                     screening_results.get("exceptions"),
@@ -387,15 +388,65 @@ def render() -> None:
                     ofac_results.get("exceptions"),
                 ]
             )
-            if not combined_exceptions.empty:
-                st.download_button(
-                    "Download All Exceptions (CSV)",
-                    combined_exceptions.to_csv(index=False).encode("utf-8"),
-                    "all_exceptions.csv",
-                    "text/csv",
+
+            package_buffer = io.BytesIO()
+            with zipfile.ZipFile(package_buffer, "w", zipfile.ZIP_DEFLATED) as zf:
+                summary_lines = [
+                    f"# {workpaper_title or 'OFAC Sanctions Compliance Audit'}",
+                    "",
+                    f"- **Lead Auditor:** {lead_auditor or 'N/A'}",
+                    f"- **Period Covered:** {period_start.isoformat()} to {period_end.isoformat()}",
+                    "",
+                    "## Key Metrics",
+                    f"- Compliance rate: {metrics['compliance_rate']:.1f}%",
+                    f"- Total policies: {metrics['total_policies']}",
+                    f"- Policies with alerts: {metrics['policies_with_alerts']}",
+                    f"- Confirmed matches: {metrics['confirmed_matches']}",
+                    f"- Late OFAC reports: {metrics['late_ofac_reports']}",
+                    "",
+                    "## Test Results Summary",
+                    f"- Screening timeliness failures: {screening_results['failed']}",
+                    f"- Alert review exceptions: {len(alert_results['exceptions'])}",
+                    f"- OFAC reporting exceptions: {len(ofac_results['exceptions'])}",
+                    "",
+                    "## Notes",
+                    "- Use the included CSVs for detailed exception registers.",
+                ]
+                zf.writestr("summary.md", "\n".join(summary_lines))
+
+                metrics_df = pd.DataFrame(
+                    [
+                        {"Metric": "Compliance Rate", "Value": f"{metrics['compliance_rate']:.1f}%"},
+                        {"Metric": "Total Policies", "Value": metrics["total_policies"]},
+                        {"Metric": "Policies with Alerts", "Value": metrics["policies_with_alerts"]},
+                        {"Metric": "Confirmed Matches", "Value": metrics["confirmed_matches"]},
+                        {"Metric": "Late OFAC Reports", "Value": metrics["late_ofac_reports"]},
+                    ]
                 )
-            else:
-                st.info("No exceptions detected across tests.")
+                zf.writestr("metrics.csv", metrics_df.to_csv(index=False))
+
+                zf.writestr(
+                    "screening_exceptions.csv",
+                    screening_results["exceptions"].to_csv(index=False),
+                )
+                zf.writestr(
+                    "alert_review_exceptions.csv",
+                    alert_results["exceptions"].to_csv(index=False),
+                )
+                zf.writestr(
+                    "ofac_reporting_exceptions.csv",
+                    ofac_results["exceptions"].to_csv(index=False),
+                )
+
+            package_buffer.seek(0)
+            package_name = (workpaper_title or "ofac_workpaper").lower().replace(" ", "_")
+            st.success("✅ Workpaper package generated! Download the ZIP archive below.")
+            st.download_button(
+                "Download Workpaper Package (ZIP)",
+                data=package_buffer.getvalue(),
+                file_name=f"{package_name}_package.zip",
+                mime="application/zip",
+            )
 
 
 if __name__ == "__main__":
