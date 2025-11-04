@@ -187,6 +187,28 @@ def render() -> None:
     st.title("OFAC Audit Analysis Dashboard")
     st.markdown("---")
 
+    st.markdown(
+        """
+        <style>
+        .analysis-high-contrast, .analysis-high-contrast * {
+            color: #f5f5f5 !important;
+        }
+        [data-testid="stMetricValue"] {
+            color: #f5f5f5 !important;
+            font-weight: 700 !important;
+        }
+        [data-testid="stMetricDelta"] {
+            font-weight: 600 !important;
+        }
+        .high-contrast-table div[data-testid="stDataFrame"] tbody tr td {
+            color: #eaeaea !important;
+            font-weight: 500;
+        }
+        </style>
+        """,
+        unsafe_allow_html=True,
+    )
+    st.markdown('<div class="analysis-high-contrast">', unsafe_allow_html=True)
     if "analysis_data" not in st.session_state:
         st.session_state.analysis_data = None
 
@@ -284,8 +306,11 @@ def render() -> None:
                 st.metric("Failed", screening_results["failed"], delta_color="inverse")
 
             st.markdown("#### Exceptions")
-            screen_df = screening_results["exceptions"]
-            st.dataframe(screen_df, hide_index=True, use_container_width=True)
+        screen_df = screening_results["exceptions"]
+        if screen_df.empty:
+            st.success("No screening timeliness exceptions detected.")
+        else:
+            st.dataframe(screen_df, hide_index=True, use_container_width=True, height=400)
             st.download_button(
                 "Download Screening Exceptions",
                 screen_df.to_csv(index=False).encode("utf-8"),
@@ -307,7 +332,10 @@ def render() -> None:
             st.plotly_chart(create_reviewer_scorecard(reviewer_perf), width="stretch")
 
             st.markdown("#### Alert Review Exceptions")
-            st.dataframe(alert_results["exceptions"], hide_index=True, use_container_width=True)
+            if alert_results["exceptions"].empty:
+                st.success("No alert review exceptions identified.")
+            else:
+                st.dataframe(alert_results["exceptions"], hide_index=True, use_container_width=True, height=400)
 
         with tab_reporting:
             st.subheader("Check 3: OFAC Reporting Compliance")
@@ -320,7 +348,10 @@ def render() -> None:
                 st.metric("Late Reports", ofac_results["late"], delta_color="inverse")
 
             st.markdown("#### OFAC Reporting Exceptions")
-            st.dataframe(ofac_results["exceptions"], hide_index=True, use_container_width=True)
+            if ofac_results["exceptions"].empty:
+                st.success("All required OFAC reports were submitted on time.")
+            else:
+                st.dataframe(ofac_results["exceptions"], hide_index=True, use_container_width=True, height=300)
 
     with tab_llm:
         st.header("LLM Note Evaluator")
@@ -438,3 +469,4 @@ def render() -> None:
                 file_name=filename,
                 mime="application/zip",
             )
+    st.markdown("</div>", unsafe_allow_html=True)

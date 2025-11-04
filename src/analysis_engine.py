@@ -69,9 +69,11 @@ def run_screening_checks(data: Dict[str, pd.DataFrame]) -> Dict[str, object]:
         policy_lookup = policyholders.set_index("policy_id")
         for _, row in screening_failures.iterrows():
             policy_id = row["policy_id"]
-            detail = policy_lookup.get(policy_id)
-            if detail is None:
+            if policy_id not in policy_lookup.index:
                 continue
+            detail = policy_lookup.loc[policy_id]
+            if isinstance(detail, pd.DataFrame):
+                detail = detail.iloc[0]
             exceptions.append(
                 {
                     "policy_id": policy_id,
