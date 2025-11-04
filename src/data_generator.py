@@ -490,7 +490,12 @@ class OFACDatasetGenerator:
             notes_missing: List[str] = []
             if enforce_note_failure and not note_failure_applied:
                 missing_count = self.random.randint(1, min(3, len(REQUIRED_NOTE_ELEMENTS)))
-                notes_missing = self.random.sample(REQUIRED_NOTE_ELEMENTS, missing_count)
+                choices = [
+                    element
+                    for element in REQUIRED_NOTE_ELEMENTS
+                    if not (element == "Reviewer signature/date" and reviewed_flag == "Y")
+                ]
+                notes_missing = self.random.sample(choices, min(missing_count, len(choices)))
                 note_failure_applied = True
 
             note_failure = bool(notes_missing) or reviewed_flag != "Y"

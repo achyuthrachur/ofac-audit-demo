@@ -33,6 +33,17 @@ from visualizations import (  # type: ignore  # pylint: disable=wrong-import-pos
     create_risk_heatmap,
 )
 
+COMPLIANT_SAMPLE_NOTE = (
+    "Alert triggered on name similarity (87% match). Verified SSN last 4 (3321) and "
+    "passport number (no match). Documented in TICK-2025-1234. Cleared as false positive "
+    "based on corroborating identifiers. - J.Smith, 2025-10-15"
+)
+
+PARTIAL_SAMPLE_NOTE = (
+    "Alert triggered on name similarity. Checked primary name only; no additional identifiers "
+    "reviewed. Cleared due to low risk."
+)
+
 
 def _load_generated_files(file_map: Dict[str, str]) -> Dict[str, pd.DataFrame]:
     datasets: Dict[str, pd.DataFrame] = {}
@@ -250,25 +261,29 @@ def render() -> None:
 
         alerts_df = data["alerts"]
         validation_df = data["compliance_validation"]
-        sample_note = ""
-        if sample_choice == "Compliant (5/5)":
-            compliant = validation_df[validation_df["failure_category"] != "documentation_quality"]
-            if not compliant.empty:
-                policy_id = compliant.iloc[0]["policy_id"]
-                sample_series = alerts_df[alerts_df["policy_id"] == policy_id]["reviewer_notes"]
-                if not sample_series.empty:
-                    sample_note = sample_series.iloc[0]
-        elif sample_choice == "Partially Compliant (2/5)":
-            partial = validation_df[validation_df["failure_category"] == "documentation_quality"]
-            if not partial.empty:
-                policy_id = partial.iloc[0]["policy_id"]
-                sample_series = alerts_df[alerts_df["policy_id"] == policy_id]["reviewer_notes"]
-                if not sample_series.empty:
-                    sample_note = sample_series.iloc[0]
+    sample_note = ""
+    if sample_choice == "Compliant (5/5)":
+        compliant = validation_df[validation_df["failure_category"] != "documentation_quality"]
+        if not compliant.empty:
+            policy_id = compliant.iloc[0]["policy_id"]
+            sample_series = alerts_df[alerts_df["policy_id"] == policy_id]["reviewer_notes"]
+            if not sample_series.empty:
+                sample_note = sample_series.iloc[0]
+        if not sample_note:
+            sample_note = COMPLIANT_SAMPLE_NOTE
+    elif sample_choice == "Partially Compliant (2/5)":
+        partial = validation_df[validation_df["failure_category"] == "documentation_quality"]
+        if not partial.empty:
+            policy_id = partial.iloc[0]["policy_id"]
+            sample_series = alerts_df[alerts_df["policy_id"] == policy_id]["reviewer_notes"]
+            if not sample_series.empty:
+                sample_note = sample_series.iloc[0]
+        if not sample_note:
+            sample_note = PARTIAL_SAMPLE_NOTE
 
-        reviewer_note = st.text_area(
-            "Reviewer Note to Evaluate",
-            value=sample_note,
+    reviewer_note = st.text_area(
+        "Reviewer Note to Evaluate",
+        value=sample_note,
             height=180,
             placeholder="Paste or type a reviewer note here...",
         )
