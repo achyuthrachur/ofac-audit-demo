@@ -5,3 +5,4 @@ pyyaml>=6.0
 numpy>=1.24.0
 python-dateutil>=2.8.0
 altair>=4.2.0
+plotly>=5.17.0

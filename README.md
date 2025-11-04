@@ -1,9 +1,9 @@
 # OFAC Sanctions Audit Demo
 
-Synthetic data generator and Streamlit app for demonstrating OFAC sanctions monitoring and compliance testing workflows.
+Synthetic data generator and Streamlit dashboard for demonstrating OFAC sanctions monitoring, testing, and AI-assisted documentation review.
 
 ## Project Overview
-This project creates repeatable synthetic datasets that mimic insurance policy screening, alert handling, and OFAC reporting processes. The generator intentionally injects control failures across four categories (screening timeliness, alert review timeliness, documentation quality, and reporting timeliness) according to configurable ratios. A Streamlit application lets analysts tune parameters, run the generator, explore the resulting datasets, and review compliance summaries.
+This project creates repeatable synthetic datasets that mimic insurance policy screening, alert handling, and OFAC reporting processes. The generator intentionally injects control failures across four categories (screening timeliness, alert review timeliness, documentation quality, and reporting timeliness) according to configurable ratios. A multi-page Streamlit application lets analysts tune parameters, generate data, upload or auto-load the resulting CSVs, and run an end-to-end audit analysis.
 
 ## Quick Start
 1. **Install dependencies**
@@ -12,16 +12,18 @@ This project creates repeatable synthetic datasets that mimic insurance policy s
    .venv\Scripts\activate
    pip install -r requirements.txt
    ```
-2. **Generate datasets via CLI**
+
+2. **Generate datasets via CLI (optional)**
    ```bash
    python src/data_generator.py --seed 42
    ```
    CSVs are written to `output/`.
+
 3. **Launch the Streamlit demo**
    ```bash
-   streamlit run src/demo_app.py
+   streamlit run Home.py
    ```
-   Use the sidebar to switch between the generator, inspection, and compliance summary views.
+   The app opens on a landing page that links the full workflow.
 
 ## Configuration
 Generator behaviour is controlled by `config.yaml`:
@@ -68,6 +70,43 @@ Four CSV files are produced for each run:
 | `failure_category` | Failure type (if any). |
 | `failure_details` | Narrative describing the precise rule violation. |
 
+## Streamlit App Features
+- **Home** – Overview of the demo workflow and navigation hints.
+- **📊 Data Generator** – Parameter sliders, progress feedback, preview tables, CSV downloads, and a direct link into the analysis experience. The page also provides granular inspection tabs and summary visuals for generated datasets.
+- **🔍 Audit Analysis** – Upload or auto-load datasets, run compliance checks, visualise insights, review AI note scoring, compare YoY trends, and export workpaper artifacts.
+
+## Running the Application
+
+### Launch the Multi-Page App
+```bash
+streamlit run Home.py
+```
+
+The app will open in your browser with:
+- **Home**: Landing page with navigation
+- **📊 Data Generator**: Create synthetic datasets
+- **🔍 Audit Analysis**: Upload and analyze compliance data
+
+### Demo Workflow
+1. Navigate to **Data Generator**
+2. Configure parameters (or use defaults)
+3. Click **Generate Dataset**
+4. Download CSVs (optional)
+5. Click **Go to Analysis**
+6. Explore the five analysis tabs:
+   - Executive Summary
+   - Detailed Analysis
+   - LLM Note Evaluator
+   - YoY Trends
+   - Export Workpapers
+
+### Manual Upload Mode
+If you have pre-generated CSV files:
+1. Go directly to **Audit Analysis**
+2. Upload all four CSV files
+3. Click **Load Uploaded Files**
+4. Begin analysis
+
 ## Compliance Rules
 Centralized checks are implemented in `src/compliance_rules.py`:
 
@@ -78,18 +117,16 @@ Centralized checks are implemented in `src/compliance_rules.py`:
 | `check_note_completeness(notes_text)` | Confirms reviewer notes contain all five documentation elements. |
 | `check_ofac_reporting_timeliness(reporting_row, escalation_date)` | Validates OFAC reports are filed within 10 business days of escalation. |
 
-These utilities are used both during data generation (to guarantee targeted failures) and can be reused by downstream auditing workflows.
-
-## Streamlit App Features
-- **Data Generator** – Sliders to control population size, compliance ratio, and failure distribution, with progress feedback, preview tables, and CSV downloads.
-- **Data Inspection** – Filterable tables for each dataset, plus a sample record viewer for detailed inspection.
-- **Compliance Summary** – Bar and pie charts summarizing compliance status and failure categories, alongside key data quality metrics.
+These utilities feed both the data generator and the downstream analytics.
 
 ## Implementation Notes
+- Session state persists generated file paths, enabling one-click transitions between pages.
 - Business-day arithmetic excludes weekends and US federal holidays.
 - Faker seeds the random state for reproducible demos when a seed is provided.
 - Failure assignment honours the configured distribution while ensuring mutually exclusive failure categories per policy.
 - Referential integrity is enforced: alerts always reference existing policies and OFAC reporting rows always link to confirmed alerts.
 - Edge cases include policies with multiple alerts and confirmed matches that require follow-up OFAC reports.
+- The LLM evaluator is rule-based for demo purposes; swap in a real LLM provider for production pilots.
+- Workpaper export currently downloads exception registers as CSV; integrate PDF/Word generation for production use.
 
-Refer to `docs/SOP.md` for the full sanctions monitoring SOP reflected in the generator logic.
+Refer to `docs/SOP.md` for the full sanctions monitoring SOP reflected in both generation and analytics logic.

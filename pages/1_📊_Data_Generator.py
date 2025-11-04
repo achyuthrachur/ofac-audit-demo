@@ -1,7 +1,9 @@
-"""Streamlit demo for the OFAC sanctions audit data generator."""
+"""Data Generator page for the OFAC sanctions audit demo."""
 
 from __future__ import annotations
 
+import sys
+from datetime import datetime
 from pathlib import Path
 from typing import Dict, Tuple
 
@@ -9,15 +11,22 @@ import altair as alt
 import pandas as pd
 import streamlit as st
 
-from data_generator import (
-    OFACDatasetGenerator,
+ROOT_DIR = Path(__file__).resolve().parent.parent
+SRC_DIR = ROOT_DIR / "src"
+if str(SRC_DIR) not in sys.path:
+    sys.path.append(str(SRC_DIR))
+
+from data_generator import (  # type: ignore  # pylint: disable=wrong-import-position
     GeneratorConfig,
+    OFACDatasetGenerator,
     load_config,
     merge_overrides,
+    save_datasets,
     validate_config,
 )
 
-CONFIG_PATH = Path("config.yaml")
+CONFIG_PATH = ROOT_DIR / "config.yaml"
+OUTPUT_DIR = ROOT_DIR / "output"
 
 
 @st.cache_data(show_spinner=False)
@@ -25,7 +34,9 @@ def get_base_config() -> GeneratorConfig:
     return load_config(CONFIG_PATH)
 
 
-def make_overrides(total_policies: int, compliance_ratio_pct: float, failures_pct: Dict[str, float]) -> Dict[str, Dict]:
+def make_overrides(
+    total_policies: int, compliance_ratio_pct: float, failures_pct: Dict[str, float]
+) -> Dict[str, Dict]:
     compliance_ratio = compliance_ratio_pct / 100.0
     failure_distribution = {k: v / 100.0 for k, v in failures_pct.items()}
     return {
@@ -37,7 +48,9 @@ def make_overrides(total_policies: int, compliance_ratio_pct: float, failures_pc
     }
 
 
-def generate_datasets(overrides: Dict[str, Dict], seed: int | None) -> Tuple[Dict[str, pd.DataFrame], GeneratorConfig]:
+def generate_datasets(
+    overrides: Dict[str, Dict], seed: int | None
+) -> Tuple[Dict[str, pd.DataFrame], GeneratorConfig]:
     base_config = get_base_config()
     config = merge_overrides(base_config, overrides)
     validate_config(config)
@@ -51,13 +64,13 @@ def prepare_download(df: pd.DataFrame) -> bytes:
 
 
 def show_generation_page() -> None:
-    st.header("Dataset Generator")
+    st.subheader("Dataset Generator")
     base_config = get_base_config()
 
     population = base_config.population
     failures = base_config.failure_distribution
 
-    st.subheader("Generation Parameters")
+    st.markdown("Configure the synthetic dataset parameters before generating output CSV files.")
     total_policies = st.slider(
         "Total policies",
         min_value=100,
@@ -87,22 +100,42 @@ def show_generation_page() -> None:
         )
 
     failure_total = sum(failure_inputs.values())
-    seed = st.number_input("Random seed (optional)", min_value=0, max_value=999999, step=1, value=42)
+    seed = st.number_input(
+        "Random seed (optional)",
+        min_value=0,
+        max_value=999_999,
+        step=1,
+        value=42,
+    )
 
     generate_disabled = failure_total != 100
     if generate_disabled:
         st.warning("Failure distribution must sum to 100%. Adjust the sliders before generating.")
 
-    if st.button("Generate Dataset", disabled=generate_disabled):
+    if st.button("Generate Dataset", disabled=generate_disabled, type="primary"):
         with st.spinner("Generating synthetic datasets..."):
             progress = st.progress(0)
             overrides = make_overrides(total_policies, compliance_ratio_pct, failure_inputs)
             progress.progress(30)
             datasets, config = generate_datasets(overrides, seed)
-            progress.progress(70)
+            progress.progress(60)
+            save_datasets(datasets, OUTPUT_DIR)
+            progress.progress(80)
             st.session_state["datasets"] = datasets
             st.session_state["active_config"] = config
             st.session_state["generation_summary"] = build_summary(datasets, config)
+            st.session_state["generated_files"] = {
+                "policyholders": str(OUTPUT_DIR / "policyholders.csv"),
+                "alerts": str(OUTPUT_DIR / "alerts.csv"),
+                "ofac_reporting": str(OUTPUT_DIR / "ofac_reporting.csv"),
+                "compliance_validation": str(OUTPUT_DIR / "compliance_validation.csv"),
+                "generation_params": {
+                    "total_policies": total_policies,
+                    "compliance_ratio": compliance_ratio_pct / 100.0,
+                    "seed": seed,
+                    "timestamp": datetime.utcnow().isoformat(),
+                },
+            }
             progress.progress(100)
             st.success("Dataset generation complete.")
 
@@ -135,6 +168,7 @@ def show_generation_page() -> None:
                 data=prepare_download(df),
                 file_name=name,
                 mime="text/csv",
+                use_container_width=True,
             )
 
         st.markdown("**Preview (first 10 rows)**")
@@ -152,9 +186,19 @@ def show_generation_page() -> None:
         st.write("Compliance Validation")
         st.dataframe(validation_df)
 
+        if st.session_state.get("generated_files"):
+            st.markdown("---")
+            st.success("✅ Data generation complete! Files are ready for analysis.")
+            col_go, col_hint = st.columns([1, 3])
+            with col_go:
+                if st.button("🔍 Go to Analysis", type="primary", use_container_width=True):
+                    st.switch_page("pages/2_🔍_Audit_Analysis.py")
+            with col_hint:
+                st.info("Or download the files above and proceed to the Analysis page manually.")
+
 
 def show_inspection_page() -> None:
-    st.header("Data Inspection")
+    st.subheader("Data Inspection")
     if "datasets" not in st.session_state:
         st.info("Generate a dataset first to explore the data.")
         return
@@ -174,7 +218,6 @@ def show_inspection_page() -> None:
     )
 
     with tab_policies:
-        st.subheader("Policyholders")
         status_filter = st.multiselect(
             "Policy status",
             options=sorted(policy_df["status"].unique()),
@@ -197,8 +240,7 @@ def show_inspection_page() -> None:
         include_compliant = st.checkbox("Include compliant policies", value=True)
 
         filtered_policies = policy_df[
-            policy_df["status"].isin(status_filter)
-            & policy_df["compliance_status"].isin(compliance_filter)
+            policy_df["status"].isin(status_filter) & policy_df["compliance_status"].isin(compliance_filter)
         ]
         if failure_filter:
             filtered_policies = filtered_policies[
@@ -211,7 +253,6 @@ def show_inspection_page() -> None:
         st.dataframe(filtered_policies.drop(columns=["failure_category"]))
 
     with tab_alerts:
-        st.subheader("Alerts")
         alerts_df = datasets["alerts"]
         disposition_filter = st.multiselect(
             "Disposition",
@@ -226,13 +267,11 @@ def show_inspection_page() -> None:
             key="alert_reviewer_filter",
         )
         filtered_alerts = alerts_df[
-            alerts_df["disposition"].isin(disposition_filter)
-            & alerts_df["reviewer_id"].isin(reviewer_filter)
+            alerts_df["disposition"].isin(disposition_filter) & alerts_df["reviewer_id"].isin(reviewer_filter)
         ]
         st.dataframe(filtered_alerts)
 
     with tab_reporting:
-        st.subheader("OFAC Reporting")
         report_df = datasets["ofac_reporting"]
         report_type_filter = st.multiselect(
             "Report type",
@@ -244,7 +283,6 @@ def show_inspection_page() -> None:
         st.dataframe(filtered_reports)
 
     with tab_validation:
-        st.subheader("Compliance Validation Log")
         available_failures = sorted(compliance_df["failure_category"].dropna().unique())
         fail_filter = st.multiselect(
             "Failure category",
@@ -295,7 +333,7 @@ def show_inspection_page() -> None:
 
 
 def show_summary_page() -> None:
-    st.header("Compliance Summary")
+    st.subheader("Compliance Summary")
     if "datasets" not in st.session_state:
         st.info("Generate a dataset first to view compliance insights.")
         return
@@ -305,14 +343,14 @@ def show_summary_page() -> None:
 
     status_counts = validation["compliance_status"].value_counts().reset_index()
     status_counts.columns = ["status", "count"]
-    st.subheader("Compliant vs Non-compliant Policies")
+    st.write("Compliant vs Non-compliant Policies")
     st.bar_chart(data=status_counts.set_index("status"))
 
     non_compliant = validation[validation["compliance_status"] == "non-compliant"]
     if not non_compliant.empty:
         failure_counts = non_compliant["failure_category"].value_counts().reset_index()
         failure_counts.columns = ["failure_category", "count"]
-        st.subheader("Failure Category Distribution")
+        st.write("Failure Category Distribution")
         pie_chart = (
             alt.Chart(failure_counts)
             .mark_arc()
@@ -322,7 +360,7 @@ def show_summary_page() -> None:
     else:
         st.info("All policies are compliant in the current dataset.")
 
-    st.subheader("Data Quality Metrics")
+    st.write("Data Quality Metrics")
     summary = st.session_state.get("generation_summary", {})
     metrics_df = pd.DataFrame(
         [
@@ -343,7 +381,9 @@ def build_summary(datasets: Dict[str, pd.DataFrame], config: GeneratorConfig) ->
     validation = datasets["compliance_validation"]
 
     confirmed_matches = alerts_df[alerts_df["disposition"] == "confirmed"]
-    compliance_counts = validation["compliance_status"].value_counts().rename_axis("status").reset_index(name="count")
+    compliance_counts = (
+        validation["compliance_status"].value_counts().rename_axis("status").reset_index(name="count")
+    )
     compliance_table = compliance_counts.set_index("status")
 
     summary = {
@@ -358,24 +398,17 @@ def build_summary(datasets: Dict[str, pd.DataFrame], config: GeneratorConfig) ->
     return summary
 
 
-def main() -> None:
-    st.set_page_config(
-        page_title="OFAC Sanctions Audit Demo",
-        layout="wide",
+def render_page() -> None:
+    st.title("📊 Data Generator")
+    generator_tab, inspection_tab, summary_tab = st.tabs(
+        ["Generator", "Inspection", "Compliance Summary"]
     )
-    st.sidebar.title("Navigation")
-    page = st.sidebar.radio(
-        "Go to",
-        options=["Data Generator", "Data Inspection", "Compliance Summary"],
-    )
-
-    if page == "Data Generator":
+    with generator_tab:
         show_generation_page()
-    elif page == "Data Inspection":
+    with inspection_tab:
         show_inspection_page()
-    else:
+    with summary_tab:
         show_summary_page()
 
 
-if __name__ == "__main__":
-    main()
+render_page()
