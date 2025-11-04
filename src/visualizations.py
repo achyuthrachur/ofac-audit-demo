@@ -40,24 +40,21 @@ def create_failure_distribution_bar(data: Dict[str, pd.DataFrame]) -> go.Figure:
     """Horizontal bar chart of failure categories."""
     compliance_validation = data.get("compliance_validation", pd.DataFrame())
     failures = compliance_validation[compliance_validation["compliance_status"] == "non-compliant"]
-    failure_counts = (
-        failures["failure_category"]
-        .value_counts()
-        .reset_index()
-        .rename(columns={"index": "category", "failure_category": "failure_count"})
-        if not failures.empty
-        else pd.DataFrame({"category": [], "failure_count": []})
-    )
-    failure_counts = failure_counts.loc[:, ["category", "failure_count"]]
+
+    if failures.empty:
+        failure_counts = pd.DataFrame({"category": [], "count": []})
+    else:
+        failure_counts = failures["failure_category"].value_counts().reset_index()
+        failure_counts.columns = ["category", "count"]
 
     fig = px.bar(
         failure_counts,
         y="category",
-        x="failure_count",
+        x="count",
         orientation="h",
         title="Failure Distribution (Among Non-Compliant)",
-        labels={"category": "Failure Category", "failure_count": "Count"},
-        color="failure_count",
+        labels={"category": "Failure Category", "count": "Count"},
+        color="count",
         color_continuous_scale="Reds",
     )
     fig.update_layout(height=350, showlegend=False)
