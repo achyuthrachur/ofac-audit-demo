@@ -1,22 +1,16 @@
-"""OFAC Sanctions Audit Demo
-Main landing page with navigation."""
+"""OFAC Sanctions Audit Demo landing page content."""
 
 from __future__ import annotations
 
 import streamlit as st
 
-st.set_page_config(
-    page_title="OFAC Audit Demo",
-    page_icon="🛡️",
-    layout="wide",
-    initial_sidebar_state="expanded",
-)
 
-st.title("🛡️ OFAC Sanctions Compliance Audit Demo")
-st.markdown("---")
-
-st.markdown(
-    """
+def render() -> None:
+    """Render the landing page content."""
+    st.title("🛡️ OFAC Sanctions Compliance Audit Demo")
+    st.markdown("---")
+    st.markdown(
+        """
 ## Welcome to the AI-Assisted OFAC Audit Demonstration
 
 This application demonstrates how Internal Audit can use AI to independently verify
@@ -42,21 +36,31 @@ Use the sidebar to navigate between pages:
 - ✅ **Alert Review Quality**: Are alerts investigated within 2 business days with complete documentation?
 - ✅ **OFAC Reporting**: Are confirmed matches reported within 10 business days?
 """
-)
-
-col1, col2 = st.columns(2)
-
-with col1:
-    st.info(
-        "**For Conference Demos**: Start with Data Generator using default settings "
-        "(500 policies, 60% compliant)"
     )
 
-with col2:
-    st.warning(
-        "**For Deep Dives**: Experiment with different compliance ratios and failure "
-        "distributions"
-    )
+    col1, col2 = st.columns(2)
 
-st.markdown("---")
-st.caption("Demo uses 100% synthetic data | No PII | Built for Internal Audit professionals")
+    with col1:
+        st.info(
+            "**For Conference Demos**: Start with Data Generator using default settings "
+            "(500 policies, 60% compliant)"
+        )
+
+    with col2:
+        st.warning(
+            "**For Deep Dives**: Experiment with different compliance ratios and failure "
+            "distributions"
+        )
+
+    st.markdown("---")
+    st.caption("Demo uses 100% synthetic data | No PII | Built for Internal Audit professionals")
+
+
+if __name__ == "__main__":
+    st.set_page_config(
+        page_title="OFAC Audit Demo",
+        page_icon="🛡️",
+        layout="wide",
+        initial_sidebar_state="expanded",
+    )
+    render()

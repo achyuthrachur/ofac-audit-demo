@@ -411,4 +411,6 @@ def render_page() -> None:
         show_summary_page()
 
 
-render_page()
+if __name__ == "__main__":
+    st.set_page_config(page_title="📊 Data Generator", page_icon="📊", layout="wide")
+    render_page()
