@@ -28,7 +28,11 @@ st.set_page_config(
 )
 
 st.sidebar.title("Navigation")
-selection = st.sidebar.radio("Go to", [title for title, _, _ in PAGES])
+titles = [title for title, _, _ in PAGES]
+default_title = st.session_state.get("nav_selection", titles[0])
+default_index = titles.index(default_title) if default_title in titles else 0
+selection = st.sidebar.radio("Go to", titles, index=default_index)
+st.session_state["nav_selection"] = selection
 
 
 def _load_page(path: Path, func_name: str) -> Optional[Callable[[], None]]:
