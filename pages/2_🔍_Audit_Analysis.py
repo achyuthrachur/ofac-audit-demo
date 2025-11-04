@@ -94,17 +94,17 @@ def _safe_concat(exceptions: List[pd.DataFrame]) -> pd.DataFrame:
 
 
 def render() -> None:
-    st.title("🔍 OFAC Audit Analysis Dashboard")
+    st.title("?? OFAC Audit Analysis Dashboard")
     st.markdown("---")
 
     if "analysis_data" not in st.session_state:
         st.session_state.analysis_data = None
 
-    st.header("📁 Data Upload")
+    st.header("?? Data Upload")
 
     generated_files = st.session_state.get("generated_files")
     if generated_files:
-        st.success("✅ Using data from generator. Files detected in session.")
+        st.success("? Using data from generator. Files detected in session.")
         if st.button("Load Data from Generation", type="primary"):
             try:
                 st.session_state.analysis_data = _load_generated_files(generated_files)
@@ -452,3 +452,4 @@ def render() -> None:
 if __name__ == "__main__":
     st.set_page_config(page_title="🔍 Audit Analysis", page_icon="🔍", layout="wide")
     render()
+
