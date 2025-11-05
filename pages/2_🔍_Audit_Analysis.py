@@ -191,18 +191,32 @@ def render() -> None:
         """
         <style>
         .analysis-high-contrast, .analysis-high-contrast * {
-            color: #f5f5f5 !important;
+            color: #111111 !important;
         }
         [data-testid="stMetricValue"] {
-            color: #f5f5f5 !important;
+            color: #111111 !important;
             font-weight: 700 !important;
         }
         [data-testid="stMetricDelta"] {
+            color: #0b4f26 !important;
             font-weight: 600 !important;
         }
         .high-contrast-table div[data-testid="stDataFrame"] tbody tr td {
-            color: #eaeaea !important;
+            color: #111111 !important;
             font-weight: 500;
+        }
+        .analysis-high-contrast h1,
+        .analysis-high-contrast h2,
+        .analysis-high-contrast h3,
+        .analysis-high-contrast h4 {
+            color: #101010 !important;
+        }
+        .stTabs [role="tablist"] [role="tab"] p {
+            color: #2b2b2b !important;
+            font-weight: 600 !important;
+        }
+        .stTabs [role="tab"][aria-selected="true"] p {
+            color: #000000 !important;
         }
         </style>
         """,
